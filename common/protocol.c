@@ -12,7 +12,42 @@
 #include <string.h>
 #include <errno.h>
 #include <sys/socket.h>
+#include <stdlib.h>
 
+// Utilizzato per i pacchetti in ingresso da entrambi i lati
+// Uso void* perché tipo generico, non so a priori quale pacchetto dovrò ritornare. Dove chiamo faccio poi il casting
+// (SERIALIZZAZIONE IN ENTRATA, byte array->struct)
+void *serialize_packet(struct Packet *packet) {
+    if(packet->id == CLIENT_JOINMATCH) {
+        if(packet->size < 1)    return NULL;
+        struct Client_JoinMatch *new = malloc(sizeof(struct Client_JoinMatch));
+        new->match = *((int *)packet->content);
+        return new;
+    }
+
+    if(packet->id == CLIENT_MODIFYREQUEST) {
+        if(packet->size < 2)    return NULL;
+        struct Client_ModifyRequest *new = malloc(sizeof(struct Client_ModifyRequest));
+        new->accepted = ((int *)packet->content)[0];
+        new->match = ((int *)packet->content)[1];
+        return new;
+    }
+
+    if(packet->id == CLIENT_MAKEMOVE) {
+        if(packet->size < 3)    return NULL;
+        struct Client_MakeMove *new = malloc(sizeof(struct Client_MakeMove));
+        // Uso char perché è lungo 1 byte a differenza di int (4), altrimenti prende anche i campi che non sono suoi
+        new->moveX = ((char *)packet->content)[0];
+        new->moveY = ((char *)packet->content)[1];
+        new->match = ((char *)packet->content)[2];
+        return new;
+    }
+
+    return NULL;
+}
+
+// Utilizzato per i pacchetti in uscita da entrambi i lati 
+// (SERIALIZZAZIONE IN USCITA, struct->byte array)
 void send_packet(int sockfd, struct Packet *packet) {
     /*
         Un pacchetto può essere al massimo lungo 65536 + 3 perché:
@@ -41,6 +76,19 @@ void send_packet(int sockfd, struct Packet *packet) {
         packet->size = 2;
         serialized[3] = ((struct Server_MatchRequest *)packet->content)->other_player;
         serialized[4] = ((struct Server_MatchRequest *)packet->content)->match; // Se l'id del match supera 255 esplode
+    }
+
+    if(packet->id == SERVER_NOTICESTATE) {
+        packet->size = 2;
+        serialized[3] = ((struct Server_NoticeState *)packet->content)->state;
+        serialized[4] = ((struct Server_NoticeState *)packet->content)->match;
+    }
+
+    if(packet->id == SERVER_NOTICEMOVE) {
+        packet->size = 3;
+        serialized[3] = ((struct Server_NoticeMove *)packet->content)->moveX;
+        serialized[4] = ((struct Server_NoticeMove *)packet->content)->moveY;
+        serialized[5] = ((struct Server_NoticeMove *)packet->content)->match;
     }
 
     /*

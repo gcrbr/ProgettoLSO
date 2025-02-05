@@ -21,10 +21,13 @@ struct Player {
 #define STATE_LOSE          7
 #define STATE_DRAW          8
 
+#define MAX_MATCHES         255
+
 struct Match {
     struct Player *participants[2];
     struct Player *requester;
-    char grid[3][3];
+    char grid[3][3];        // 1 = X, 2 = Cerchio
+    int freeSlots;          // Parte da 9, quando si raggiunge 0 e non ha ancora vinto nessuno è pareggio
     int state;
 };
 
@@ -34,6 +37,7 @@ struct MatchList {
 };
 
 extern struct MatchList *matches;
+extern short currMatchSize;
 
 struct generic_node {
     void *val;

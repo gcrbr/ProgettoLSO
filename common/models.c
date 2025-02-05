@@ -7,6 +7,7 @@
 #include <stdio.h>
 
 struct MatchList *matches = NULL;
+short currMatchSize = 0;
 
 void initialize_list(struct generic_node **head, void *node) {
     *head = malloc(sizeof(struct generic_node));
@@ -68,6 +69,7 @@ void remove_matches_by_player(struct MatchList **head, int player_id) {
 
     while(curr != NULL) {
         if(curr->val->participants[0]->id == player_id) {
+            --currMatchSize;
             if(prev == NULL) {
                 *head = curr->next;
             }else {
