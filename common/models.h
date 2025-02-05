@@ -28,8 +28,11 @@ struct Match {
     struct Player *participants[2];
     struct Player *requester;
     char grid[3][3];        // 1 = X, 2 = Cerchio
-    int freeSlots;          // Parte da 9, quando si raggiunge 0 e non ha ancora vinto nessuno è pareggio
+    int free_slots;          // Parte da 9, quando si raggiunge 0 e non ha ancora vinto nessuno è pareggio
     int state;
+    
+    int play_again_counter;         // Conteggio dei voti per rigiocare, 0=Nessuno, 1=Uno ha detto sì, 2=Anche l'altro ha detto sì
+    struct Player *play_again[2];   // Array dei giocatori che hanno detto sì
 };
 
 struct MatchList {

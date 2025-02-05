@@ -43,6 +43,14 @@ void *serialize_packet(struct Packet *packet) {
         return new;
     }
 
+    if(packet->id == CLIENT_PLAYAGAIN) {
+        if(packet->size < 2)    return NULL;
+        struct Client_PlayAgain *new = malloc(sizeof(struct Client_PlayAgain));
+        new->choice = ((char *)packet->content)[0];
+        new->match = ((char *)packet->content)[1];
+        return new;
+    }
+
     return NULL;
 }
 
@@ -95,6 +103,12 @@ void send_packet(int sockfd, struct Packet *packet) {
         packet->size = 2;
         serialized[3] = ((struct Server_BroadcastMatch *)packet->content)->player_id;
         serialized[4] = ((struct Server_BroadcastMatch *)packet->content)->match;
+    }
+
+    if(packet->id == SERVER_NOTICEPLAYAGAIN) {
+        packet->size = 2;
+        serialized[3] = ((struct Server_NoticePlayAgain *)packet->content)->choice;
+        serialized[4] = ((struct Server_NoticePlayAgain *)packet->content)->match;
     }
 
     /*

@@ -82,7 +82,8 @@ void handle_packet(struct client *client, struct Packet *packet) {
             struct Match *new_match = malloc(sizeof(struct Match));
             new_match->participants[0] = player;
             new_match->state = STATE_CREATED;
-            new_match->freeSlots = 9;
+            new_match->free_slots = 9;
+            new_match->play_again_counter = 0;
 
             add_node((struct generic_node **)&matches, (void *)new_match);
             ++curr_matches_size;
@@ -230,7 +231,7 @@ void handle_packet(struct client *client, struct Packet *packet) {
                                 int other_player_id = player_id == found_match->participants[0]->id ? found_match->participants[1]->id : found_match->participants[0]->id;
 
                                 found_match->grid[_packet->moveX][_packet->moveY] = found_match->state == STATE_TURN_PLAYER1 ? 1 : 2;
-                                found_match->freeSlots--; // Tolgo una casella
+                                found_match->free_slots--; // Tolgo una casella
 
                                 struct Packet *notice_move = malloc(sizeof(struct Packet));
                                 notice_move->id = SERVER_NOTICEMOVE;
@@ -290,7 +291,7 @@ void handle_packet(struct client *client, struct Packet *packet) {
                                         (found_match->grid[0][0] == i && found_match->grid[1][1] == i && found_match->grid[2][2] == i) ||
                                         (found_match->grid[2][0] == i && found_match->grid[1][1] == i && found_match->grid[2][0] == i)
                                     ) {
-                                        found_match->state = STATE_TERMINATED; // Potrei evitarlo se alla fine la elimino...
+                                        found_match->state = STATE_TERMINATED;
 
                                         struct Server_NoticeState *notice_packet = malloc(sizeof(struct Server_NoticeState));
                                         notice_packet->match = _packet->match;
@@ -308,16 +309,12 @@ void handle_packet(struct client *client, struct Packet *packet) {
                                             printf("%s Il Player id=%d ha vinto il Match id=%d contro il Player id=%d\n", MSG_DEBUG, found_match->participants[i - 1]->id, _packet->match, found_match->participants[i % 2]->id);
                                         }
 
-                                        found_match->participants[0]->busy = 0;
-                                        found_match->participants[1]->busy = 0;
-
                                         free(new_packet);
-                                        remove_node((struct generic_node **)&matches, found_match);
                                     }
                                 }
                             
                                 // Controllo se siamo in pareggio; cioè se nessuno ha vinto ma sono finite le caselle
-                                if(found_match->freeSlots == 0) {
+                                if(found_match->free_slots == 0) {
                                     found_match->state = STATE_TERMINATED;
 
                                     struct Server_NoticeState *notice_packet = malloc(sizeof(struct Server_NoticeState));
@@ -328,7 +325,7 @@ void handle_packet(struct client *client, struct Packet *packet) {
                                     new_packet->id = SERVER_NOTICESTATE;
                                     new_packet->content = notice_packet;
 
-                                    // Avviso entrambi che è un pareggio ed elimino la partita
+                                    // Avviso entrambi che è un pareggio
                                     send_packet(found_match->participants[0]->id, new_packet);
                                     send_packet(found_match->participants[1]->id, new_packet);
 
@@ -336,11 +333,7 @@ void handle_packet(struct client *client, struct Packet *packet) {
                                         printf("%s Il Match id=%d tra i Player id=%d,%d è terminata in pareggio\n", MSG_DEBUG, _packet->match, found_match->participants[0]->id, found_match->participants[1]->id);
                                     }
 
-                                    found_match->participants[0]->busy = 0;
-                                    found_match->participants[1]->busy = 0;
-
                                     free(new_packet);
-                                    remove_node((struct generic_node **)&matches, found_match);
                                 }
                             }else {
                                 if(DEBUG) {
@@ -378,28 +371,129 @@ void handle_packet(struct client *client, struct Packet *packet) {
             }
         }
     }
-}
 
-void read_data(struct client *client, char buf[BUFFER_SIZE]) {
-    struct Packet *packet = malloc(sizeof(struct Packet));
-    packet->id = buf[0];
-    packet->size = 0;
-    packet->size = buf[1] + (buf[2] << 8); // Little endian Int -> C Int
-    packet->content = malloc(sizeof(char) * packet->size);
-    memcpy(packet->content, buf + 3, packet->size);
-    handle_packet(client, packet);
-    free(packet->content);
-    free(packet);
+    if(packet->id == CLIENT_PLAYAGAIN) {
+        if(serialized != NULL) {
+            struct Client_PlayAgain *_packet = (struct Client_PlayAgain *)serialized;
+            struct Match *found_match;
+
+            if((found_match = get_match_by_id(matches, _packet->match)) != NULL) {
+                if(found_match->state == STATE_TERMINATED) {
+                    if(found_match->participants[0]->id == player_id || found_match->participants[1]->id == player_id) {
+                        // Cast a quello del client perché hanno stessa struttura
+                        struct Server_NoticePlayAgain *play_again = (struct Server_NoticePlayAgain *)_packet;
+                        struct Packet *new_packet = malloc(sizeof(struct Packet));
+                        new_packet->id = SERVER_NOTICEPLAYAGAIN;
+                        new_packet->content = play_again;
+
+                        int other_player_id = found_match->participants[0]->id == player_id ? found_match->participants[1]->id : found_match->participants[0]->id;
+
+                        if(_packet->choice) {    // Accetta
+                            if(found_match->play_again_counter == 0 || found_match->play_again[found_match->play_again_counter - 1]->id != player_id) {
+                                found_match->play_again[found_match->play_again_counter] = player;
+                                found_match->play_again_counter++; // Aggiungo un voto
+
+                                if(DEBUG) {
+                                    printf("%s Il Player id=%d ha votato per rigiocare il Match id=%d contro id=%d\n", MSG_DEBUG, player_id, _packet->match, other_player_id);
+                                }
+                                
+                                if(found_match->play_again_counter == 2) { // Hanno detto entrambi sì
+                                    found_match->play_again_counter = 0;
+                                    // Cancello i voti per rigiocare
+                                    memset(found_match->play_again, 0, sizeof(found_match->play_again[0]) * 2);
+                                    found_match->state = STATE_TURN_PLAYER1;
+                                    // Setto tutta la memoria della griglia a 0 (svuoto)
+                                    memset(found_match->grid, 0, sizeof(found_match->grid[0][0]) * 9);
+
+                                    // Avviso entrambi che si rigioca
+                                    send_packet(found_match->participants[0]->id, new_packet);
+                                    send_packet(found_match->participants[1]->id, new_packet);
+
+                                    found_match->free_slots = 9;
+
+                                    // Avviso il creatore che è il suo turno
+                                    struct Server_NoticeState *new_state = malloc(sizeof(struct Server_NoticeState));
+                                    new_state->state = found_match->state;
+                                    new_state->match = _packet->match;
+                                    struct Packet *state_packet = malloc(sizeof(struct Packet));
+                                    state_packet->id = SERVER_NOTICESTATE;
+                                    state_packet->content = new_state;
+                                    send_packet(found_match->participants[0]->id, state_packet);
+                                    free(state_packet);
+
+                                    if(DEBUG) {
+                                        printf("%s La partita Match id=%d tra i Player id=%d,%d si rigioca\n", MSG_DEBUG, _packet->match, found_match->participants[0]->id, found_match->participants[1]->id);
+                                    }
+                                }
+                            }else {
+                                if(DEBUG) {
+                                    printf("%s Il Player id=%d ha provato a votare due volte per rigiocare al Match id=%d\n", MSG_DEBUG, player_id, _packet->match);
+                                }
+                                send_empty_packet(client, SERVER_ERROR);
+                            }
+                        }else {         // Rifiuta
+                            // Libero i due giocatori ed elimino il match
+                            found_match->participants[0]->busy = 0;
+                            found_match->participants[1]->busy = 0;
+                            remove_node((struct generic_node **)&matches, found_match);
+                            curr_matches_size--;
+
+                            // Avviso l'altro giocatore del rifiuto
+                            send_packet(other_player_id, new_packet);
+
+                            if(DEBUG) {
+                                printf("%s La partita Match id=%d tra i Player id=%d,%d non si rigiocherà\n", MSG_DEBUG, _packet->match, found_match->participants[0]->id, found_match->participants[1]->id);
+                            }
+                        }
+                        free(new_packet);
+                    }else {
+                        if(DEBUG) {
+                            printf("%s Il Player id=%d ha provato a rigiocare in un Match id=%d di cui non fa parte\n", MSG_DEBUG, player_id, _packet->match);
+                        }
+                        send_empty_packet(client, SERVER_ERROR);
+                    }
+                }else {
+                    if(DEBUG) {
+                        printf("%s Il Player id=%d ha provato a rigiocare in un Match id=%d non ancora terminato\n", MSG_DEBUG, player_id, _packet->match);
+                    }
+                    send_empty_packet(client, SERVER_ERROR);
+                }
+            }else {
+                if(DEBUG) {
+                    printf("%s Il Player id=%d ha provato a rigiocare in un Match id=%d non valido\n", MSG_DEBUG, player_id, _packet->match);
+                }
+                send_empty_packet(client, SERVER_ERROR);
+            }
+        }else {
+            if(DEBUG) {
+                printf("%s Player id=%d ha inviato un Packet id=%d non serializzabile\n", MSG_DEBUG, player_id, packet->id);
+            }
+        }
+    }
 }
 
 void *server_thread(void *args) {
     struct client *client = (struct client *)args;
-    char buf[BUFFER_SIZE];
+    char buffer[BUFFER_SIZE];
+    size_t total = 0;
     while(1) {
-        if(recv(client->conn, buf, BUFFER_SIZE, 0) == 0) {
+        ssize_t received = recv(client->conn, buffer, BUFFER_SIZE, 0);
+        if(received <= 0) {
             break;
-        }else {
-            read_data(client, buf);
+        }
+        total = received;
+        while(total > 0) {
+            char *block = buffer + (received - total);
+            struct Packet *packet = malloc(sizeof(struct Packet));
+            packet->id = block[0];
+            packet->size = 0;
+            packet->size = block[1] + (block[2] << 8); // Little endian Int -> C Int
+            packet->content = malloc(sizeof(char) * packet->size);
+            memcpy(packet->content, block + 3, packet->size);
+            handle_packet(client, packet);
+            total -= packet->size + 3;
+            free(packet->content);
+            free(packet);
         }
     }
     return NULL;

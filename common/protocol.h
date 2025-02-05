@@ -20,6 +20,7 @@ void send_packet(int sockfd, struct Packet *packet);
 #define CLIENT_JOINMATCH         3
 #define CLIENT_MODIFYREQUEST     4
 #define CLIENT_MAKEMOVE          5
+#define CLIENT_PLAYAGAIN         6
 
 struct Client_JoinMatch {
     int match;
@@ -36,6 +37,11 @@ struct Client_MakeMove {      // Pacchetto per fare una mossa in una partita
     int match;
 };
 
+struct Client_PlayAgain {
+    int choice;         // 0 = No, 1 = Sì (se vuole rigiocare)
+    int match;          // Id della partita
+};
+
 /* 
     Server packets
     (Server->Client)
@@ -48,6 +54,7 @@ struct Client_MakeMove {      // Pacchetto per fare una mossa in una partita
 #define SERVER_NOTICESTATE       24 // Avvisa i client degli stati della partita, tra cui anche i turni
 #define SERVER_NOTICEMOVE        25 // Avvisa l'altro giocatore della mossa fatta dall'altro
 #define SERVER_BROADCASTMATCH    26 // Avvisa a tutti i client connessi della nuova partita creata
+#define SERVER_NOTICEPLAYAGAIN   27 // Avvisa i due client della nuova partita creata (se hanno detto entrambi sì)
 
 struct Server_Handshake {
     int player_id;
@@ -71,5 +78,10 @@ struct Server_NoticeMove {
 
 struct Server_BroadcastMatch {
     int player_id;
+    int match;
+};
+
+struct Server_NoticePlayAgain { // Il corrispondente che avvisa l'altro client se è stato accettato o meno
+    int choice;
     int match;
 };
