@@ -24,7 +24,7 @@
 #include <errno.h>
 
 #define PORT 8080
-#define MAX_CLIENTS 64
+#define MAX_CLIENTS 255
 
 extern struct client_node *clients;
 
@@ -67,30 +67,39 @@ void init_socket() {
         if((conn = accept(sockfd, (struct sockaddr*)&address, &addrlen)) < 0) {
             fprintf(stderr, "%s Impossibile accettare la connessione: %s\n", MSG_ERROR, strerror(errno));
         }else {
-            printf("%s Connessione accettata (fd=%d)\n", MSG_INFO, conn);
+            if(curr_clients_size < MAX_CLIENTS) {
+                printf("%s Connessione accettata (fd=%d)\n", MSG_INFO, conn);
 
-            struct client *new_client = malloc(sizeof(struct client));
-            new_client->conn = conn;
-            new_client->addr = address;
-            add_node((struct generic_node **)&clients, (void *)new_client);
+                struct client *new_client = malloc(sizeof(struct client));
+                new_client->conn = conn;
+                new_client->addr = address;
 
-            if(pthread_create(&threads[thread_count++], NULL, server_thread, (void *)new_client) < 0) {
-                fprintf(stderr, "%s Impossibile avviare thread: %s\n", MSG_ERROR, strerror(errno));
+                struct Player *player = malloc(sizeof(struct Player));
+                player->id = -1;
+                new_client->player = player;
+                add_node((struct generic_node **)&clients, (void *)new_client);
+
+                if(pthread_create(&threads[thread_count++], NULL, server_thread, (void *)new_client) < 0) {
+                    fprintf(stderr, "%s Impossibile avviare thread: %s\n", MSG_ERROR, strerror(errno));
+                    close(conn);
+                    remove_node((struct generic_node **)&clients, (void *)new_client);
+                    free(new_client);
+                }
+
+                struct joiner_thread_args *thread_args = malloc(sizeof(struct joiner_thread_args));
+                thread_args->client = new_client;
+                thread_args->thread = threads[thread_count - 1];
+
+                pthread_t joiner_thread_id;
+                if(pthread_create(&joiner_thread_id, NULL, joiner_thread, (void *)thread_args) < 0) {
+                    fprintf(stderr, "%s Impossibile avviare joiner thread: %s\n", MSG_ERROR, strerror(errno));
+                    close(conn);
+                    remove_node((struct generic_node **)&clients, (void *)new_client);
+                    free(new_client);
+                }
+            }else {
                 close(conn);
-                remove_node((struct generic_node **)&clients, (void *)new_client);
-                free(new_client);
-            }
-
-            struct joiner_thread_args *thread_args = malloc(sizeof(struct joiner_thread_args));
-            thread_args->client = new_client;
-            thread_args->thread = threads[thread_count - 1];
-
-            pthread_t joiner_thread_id;
-            if(pthread_create(&joiner_thread_id, NULL, joiner_thread, (void *)thread_args) < 0) {
-                fprintf(stderr, "%s Impossibile avviare joiner thread: %s\n", MSG_ERROR, strerror(errno));
-                close(conn);
-                remove_node((struct generic_node **)&clients, (void *)new_client);
-                free(new_client);
+                printf("%s Impossibile accettare nuova connessione. Limite massimo raggiunto (%d)\n", MSG_WARNING, curr_clients_size);
             }
         }
     }

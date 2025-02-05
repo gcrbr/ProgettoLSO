@@ -91,6 +91,12 @@ void send_packet(int sockfd, struct Packet *packet) {
         serialized[5] = ((struct Server_NoticeMove *)packet->content)->match;
     }
 
+    if(packet->id == SERVER_BROADCASTMATCH) {
+        packet->size = 2;
+        serialized[3] = ((struct Server_BroadcastMatch *)packet->content)->player_id;
+        serialized[4] = ((struct Server_BroadcastMatch *)packet->content)->match;
+    }
+
     /*
         Conversione da int a array di byte (little endian), usato per la lunghezza del pacchetto
         Es: 25  -> '\x19\x00'

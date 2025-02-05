@@ -24,11 +24,12 @@ if len(sys.argv) > 1 and sys.argv[1] == 'create':
     data=s.recv(1024)
     print(data)
 else:
-    packetId = (3).to_bytes()
+    pass
+    '''packetId = (3).to_bytes()
     content = b'\x00'
     packetSize = len(content).to_bytes(2, 'little')
 
-    s.send(packetId + packetSize + content)
+    s.send(packetId + packetSize + content)'''
 
 i=0
 j=0
@@ -37,6 +38,9 @@ while True:
     data=s.recv(1024)
     if data:
         print(data)
+        if data[0] == 26:
+            print('nuova partita creata dal player %d: %d, entro' % (data[3], data[4],))
+            s.send(b'\x03\x01\x00' + data[4].to_bytes())
         if len(sys.argv) > 1 and sys.argv[1] == 'create':
             if data[0] == 0x17:
                 packetId = (4).to_bytes()

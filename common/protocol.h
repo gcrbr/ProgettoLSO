@@ -47,6 +47,7 @@ struct Client_MakeMove {      // Pacchetto per fare una mossa in una partita
 #define SERVER_MATCHREQUEST      23
 #define SERVER_NOTICESTATE       24 // Avvisa i client degli stati della partita, tra cui anche i turni
 #define SERVER_NOTICEMOVE        25 // Avvisa l'altro giocatore della mossa fatta dall'altro
+#define SERVER_BROADCASTMATCH    26 // Avvisa a tutti i client connessi della nuova partita creata
 
 struct Server_Handshake {
     int player_id;
@@ -65,5 +66,10 @@ struct Server_NoticeState {
 struct Server_NoticeMove {
     int moveX;
     int moveY;
+    int match;
+};
+
+struct Server_BroadcastMatch {
+    int player_id;
     int match;
 };

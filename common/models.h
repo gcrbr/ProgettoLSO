@@ -7,6 +7,7 @@
 
 struct Player {
     int id;
+    int busy;   // 1 Se è già occupato in una partita, 0 Altrimenti
 };
 
 #define STATE_TERMINATED    0
@@ -37,7 +38,7 @@ struct MatchList {
 };
 
 extern struct MatchList *matches;
-extern short currMatchSize;
+extern short curr_matches_size;
 
 struct generic_node {
     void *val;

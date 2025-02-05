@@ -20,11 +20,19 @@
 
 #define BUFFER_SIZE 1024
 
+/*
+    Questo thread parte parallelamente col thread che gestisce la connessione col singolo client;
+    Server ad aspettare che il suddetto thread termini per poi:
+    - Mostrare il messaggio di disconnessione
+    - Eliminare il client (e relativo giocatore) dalla lista dei client
+    - Eliminare tutte le partite del giocatore
+*/
 void *joiner_thread(void *args) {
     struct joiner_thread_args *thread_args = (struct joiner_thread_args*)args;
     pthread_join((pthread_t)(thread_args->thread), NULL);
     printf("%s Connessione chiusa (fd=%d)\n", MSG_INFO, thread_args->client->conn);
     remove_node((struct generic_node **)&clients, (void*)(thread_args->client)); // Rimuovi il client dalla lista
+    curr_clients_size--;
     remove_matches_by_player(&matches, thread_args->client->conn); // Rimuovi tutte le partite create dal giocatore
     free(thread_args->client);
     return NULL;
@@ -41,8 +49,7 @@ void send_empty_packet(struct client *client, int packet_id){
 void handle_packet(struct client *client, struct Packet *packet) {
     // Usiamo il file descriptor come player id
     int player_id = (client->conn) % 255;
-    struct Player *player = malloc(sizeof(struct Player)); // Rivedere, viene allocato un nuovo player ad ogni pacchetto...
-    player->id = player_id;
+    struct Player *player = client->player; // Alias
 
     // Serializziamo i pacchetti in ingresso per trasformarli in struct
     void *serialized = serialize_packet(packet);
@@ -52,6 +59,9 @@ void handle_packet(struct client *client, struct Packet *packet) {
     }
 
     if(packet->id == CLIENT_HANDSHAKE) {
+        if(client->player->id == -1) {
+            player->id = player_id;
+        }
         struct Server_Handshake *handshake = malloc(sizeof(struct Server_Handshake));
         handshake->player_id = player_id;
         struct Packet *new_packet = malloc(sizeof(struct Packet));
@@ -61,21 +71,37 @@ void handle_packet(struct client *client, struct Packet *packet) {
         free(new_packet);
     }
 
+    // Si deve passare prima per l'handshake per creare il Player, poi si può fare il resto
+    if(client->player->id == -1) {
+        send_empty_packet(client, SERVER_ERROR);
+        return;
+    }
+
     if(packet->id == CLIENT_CREATEMATCH) {
-        if(currMatchSize < MAX_MATCHES) {
+        if(curr_matches_size < MAX_MATCHES) {
             struct Match *new_match = malloc(sizeof(struct Match));
             new_match->participants[0] = player;
             new_match->state = STATE_CREATED;
             new_match->freeSlots = 9;
 
             add_node((struct generic_node **)&matches, (void *)new_match);
-            ++currMatchSize;
+            ++curr_matches_size;
             
             send_empty_packet(client, SERVER_SUCCESS);
 
             if(DEBUG) {
                 printf("%s Il Player id=%d ha creato una nuova partita\n", MSG_DEBUG, player_id);
             }
+
+            // Avviso tutti i client connessi della nuova partita creata
+            struct Server_BroadcastMatch *broadcast = malloc(sizeof(struct Server_BroadcastMatch));
+            broadcast->player_id = player_id;
+            broadcast->match = curr_matches_size - 1;
+            struct Packet *new_packet = malloc(sizeof(struct Packet));
+            new_packet->id = SERVER_BROADCASTMATCH;
+            new_packet->content = broadcast;
+            broadcast_packet(clients, new_packet, player_id);
+            free(new_packet);
         }else{
             printf("%s Raggiunto limite di Match possibili (%d)\n", MSG_WARNING, MAX_MATCHES);
             send_empty_packet(client, SERVER_ERROR);
@@ -83,41 +109,48 @@ void handle_packet(struct client *client, struct Packet *packet) {
     }
 
     if(packet->id == CLIENT_JOINMATCH) {
-        if(serialized != NULL) {
-            struct Client_JoinMatch *_packet = (struct Client_JoinMatch *)serialized;
-            struct Match *found_match;
-            if((found_match = get_match_by_id(matches, _packet->match)) != NULL) {
-                if(found_match->participants[0]->id != player_id) {
-                    found_match->requester = player;
-                    if(DEBUG) {
-                        printf("%s Il Player id=%d ha inviato una richiesta al Match id=%d (creato da Player id=%d)\n", MSG_DEBUG, player_id, _packet->match, found_match->participants[0]->id);
+        if(!player->busy) {
+            if(serialized != NULL) {
+                struct Client_JoinMatch *_packet = (struct Client_JoinMatch *)serialized;
+                struct Match *found_match;
+                if((found_match = get_match_by_id(matches, _packet->match)) != NULL) {
+                    if(found_match->participants[0]->id != player_id) {
+                        found_match->requester = player;
+                        if(DEBUG) {
+                            printf("%s Il Player id=%d ha inviato una richiesta al Match id=%d (creato da Player id=%d)\n", MSG_DEBUG, player_id, _packet->match, found_match->participants[0]->id);
+                        }
+                        send_empty_packet(client, SERVER_SUCCESS);
+                        
+                        struct Server_MatchRequest *request_packet = malloc(sizeof(struct Server_MatchRequest));
+                        request_packet->other_player = player_id;
+                        request_packet->match = _packet->match;
+                        struct Packet *new_packet = malloc(sizeof(struct Packet));
+                        new_packet->id = SERVER_MATCHREQUEST;
+                        new_packet->content = request_packet;
+                        send_packet(found_match->participants[0]->id, new_packet); // Mando la richiesta al client dell'altro giocatore
+                        free(new_packet);
+                    }else {
+                        if(DEBUG) {
+                            printf("%s Il Player id=%d ha provato ad entrare nel suo stesso Match id=%d\n", MSG_DEBUG, player_id, _packet->match);
+                        }
+                        send_empty_packet(client, SERVER_ERROR);
                     }
-                    send_empty_packet(client, SERVER_SUCCESS);
-                    
-                    struct Server_MatchRequest *request_packet = malloc(sizeof(struct Server_MatchRequest));
-                    request_packet->other_player = player_id;
-                    request_packet->match = _packet->match;
-                    struct Packet *new_packet = malloc(sizeof(struct Packet));
-                    new_packet->id = SERVER_MATCHREQUEST;
-                    new_packet->content = request_packet;
-                    send_packet(found_match->participants[0]->id, new_packet); // Mando la richiesta al client dell'altro giocatore
-                    free(new_packet);
                 }else {
                     if(DEBUG) {
-                        printf("%s Il Player id=%d ha provato ad entrare nel suo stesso Match id=%d\n", MSG_DEBUG, player_id, _packet->match);
+                        printf("%s Il Player id=%d ha provato ad entrare in un Match id=%d non valido\n", MSG_DEBUG, player_id, _packet->match);
                     }
                     send_empty_packet(client, SERVER_ERROR);
                 }
             }else {
                 if(DEBUG) {
-                    printf("%s Player id=%d ha provato ad entrare in un Match id=%d non valido\n", MSG_DEBUG, player_id, _packet->match);
+                    printf("%s Il Player id=%d ha inviato un Packet id=%d non serializzabile\n", MSG_DEBUG, player_id, packet->id);
                 }
-                send_empty_packet(client, SERVER_ERROR);
             }
         }else {
             if(DEBUG) {
-                printf("%s Player id=%d ha inviato un Packet id=%d non serializzabile\n", MSG_DEBUG, player_id, packet->id);
+                printf("%s Il Player id=%d ha provato ad accedere al Match id=%d mentre è già impegnato in un altro\n", MSG_DEBUG, player_id, packet->id);
             }
+            send_empty_packet(client, SERVER_ERROR);
         }
     }
 
@@ -129,9 +162,15 @@ void handle_packet(struct client *client, struct Packet *packet) {
             if((found_match = get_match_by_id(matches, _packet->match)) != NULL) {
                 if(found_match->participants[0]->id == player_id && found_match->requester != NULL) {
                     if(_packet->accepted) {
+                        // Ha accettato, inizia la partita
+
                         found_match->participants[1] = found_match->requester;
                         found_match->requester = NULL;
                         found_match->state = STATE_TURN_PLAYER1; // Inizia il creatore della partita
+
+                        // Imposto entrambi i giocatori come impegnati
+                        found_match->participants[0]->busy = 1;
+                        found_match->participants[1]->busy = 1;
 
                         struct Server_NoticeState *turn_packet = malloc(sizeof(struct Server_NoticeState));
                         turn_packet->match = _packet->match;
@@ -269,6 +308,9 @@ void handle_packet(struct client *client, struct Packet *packet) {
                                             printf("%s Il Player id=%d ha vinto il Match id=%d contro il Player id=%d\n", MSG_DEBUG, found_match->participants[i - 1]->id, _packet->match, found_match->participants[i % 2]->id);
                                         }
 
+                                        found_match->participants[0]->busy = 0;
+                                        found_match->participants[1]->busy = 0;
+
                                         free(new_packet);
                                         remove_node((struct generic_node **)&matches, found_match);
                                     }
@@ -293,6 +335,9 @@ void handle_packet(struct client *client, struct Packet *packet) {
                                     if(DEBUG) {
                                         printf("%s Il Match id=%d tra i Player id=%d,%d è terminata in pareggio\n", MSG_DEBUG, _packet->match, found_match->participants[0]->id, found_match->participants[1]->id);
                                     }
+
+                                    found_match->participants[0]->busy = 0;
+                                    found_match->participants[1]->busy = 0;
 
                                     free(new_packet);
                                     remove_node((struct generic_node **)&matches, found_match);
