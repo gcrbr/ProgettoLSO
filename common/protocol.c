@@ -22,7 +22,7 @@ void *serialize_packet(struct Packet *packet) {
     if(packet->id == CLIENT_JOINMATCH) {
         if(packet->size < 1)    return NULL;
         struct Client_JoinMatch *new = malloc(sizeof(struct Client_JoinMatch));
-        new->match = *((int *)packet->content);
+        new->match = ((char *)packet->content)[0];
         return new;
     }
 
@@ -101,6 +101,20 @@ void *serialize_packet(struct Packet *packet) {
         return new;
     }
 
+    if(packet->id == SERVER_BROADCASTMATCH){
+        if(packet->size < 2)    return NULL;
+        struct Server_BroadcastMatch *new=malloc(sizeof(struct Server_BroadcastMatch));
+        new->player_id=((char *)packet->content)[0];
+        new->match=((char *)packet->content)[1];
+        return new;
+    }
+
+    if(packet->id == SERVER_BROADCASTREMOVEMATCH){
+        if(packet->size < 1)    return NULL;
+        struct Server_BroadcastRemoveMatch *new=malloc(sizeof(struct Server_BroadcastRemoveMatch));
+        new->match=((char *)packet->content)[0];
+        return new;
+    }
     return NULL;
 }
 
@@ -167,6 +181,11 @@ void send_packet(int sockfd, struct Packet *packet) {
         packet->size = 2;
         serialized[3] = ((struct Server_UpdateOnRequest *)packet->content)->accepted;
         serialized[4] = ((struct Server_UpdateOnRequest *)packet->content)->match;
+    }
+
+    if(packet->id == SERVER_BROADCASTREMOVEMATCH){
+        packet->size = 1;
+        serialized[3] = ((struct Server_BroadcastRemoveMatch *)packet->content)->match;
     }
 
     // Client packets

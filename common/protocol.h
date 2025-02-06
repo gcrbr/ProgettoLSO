@@ -56,6 +56,7 @@ struct Client_PlayAgain {
 #define SERVER_NOTICEMOVE        25 // Avvisa l'altro giocatore della mossa fatta dall'altro
 #define SERVER_BROADCASTMATCH    26 // Avvisa a tutti i client connessi della nuova partita creata
 #define SERVER_NOTICEPLAYAGAIN   27 // Avvisa i due client della nuova partita creata (se hanno detto entrambi sì)
+#define SERVER_BROADCASTREMOVEMATCH 28 //Avvisa che quella partita non è più disponibile
 
 struct Server_Handshake {
     int player_id;
@@ -84,6 +85,10 @@ struct Server_NoticeMove {
 
 struct Server_BroadcastMatch {
     int player_id;
+    int match;
+};
+
+struct Server_BroadcastRemoveMatch{
     int match;
 };
 

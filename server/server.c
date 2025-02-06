@@ -26,7 +26,7 @@
 #define PORT 8080
 #define MAX_CLIENTS 255
 
-extern struct client_node *clients;
+struct client_node *clients;
 
 void init_socket() {
     int sockfd = 0;

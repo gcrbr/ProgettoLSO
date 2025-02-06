@@ -13,7 +13,7 @@ struct joiner_thread_args {
     pthread_t thread;
 };
 
-struct client_node *clients;
+extern struct client_node *clients;
 
 void *joiner_thread(void *args);
 void *server_thread(void *args);

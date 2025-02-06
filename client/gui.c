@@ -123,6 +123,12 @@ void *ui_thread(void *_sockfd) {
                 game_ui(sockfd);
             }
 
+            if(scelta==2){
+                scelta=-1;
+                printf("%s Partite disponibili \n",MSG_INFO);
+                print_available_matches();
+            }
+
             if(scelta == 3) {
                 scelta = -1;
                 int id_partita = -1;

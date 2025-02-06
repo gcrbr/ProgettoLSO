@@ -91,7 +91,7 @@ void handle_packet(struct client *client, struct Packet *packet) {
             send_empty_packet(client, SERVER_SUCCESS);
 
             if(DEBUG) {
-                printf("%s Il Player id=%d ha creato una nuova partita\n", MSG_DEBUG, player_id);
+                printf("%s Il Player id=%d ha creato una nuova partita con id %d\n", MSG_DEBUG, player_id, curr_matches_size-1);
             }
 
             // Avviso tutti i client connessi della nuova partita creata
@@ -187,6 +187,13 @@ void handle_packet(struct client *client, struct Packet *packet) {
                         new_packet->id = SERVER_NOTICESTATE;
                         new_packet->content = turn_packet;
                         send_packet(client->conn, new_packet); // Avviso il creatore della partita che è il suo turno
+
+                        struct Server_BroadcastRemoveMatch *broadcast = malloc(sizeof(struct Server_BroadcastRemoveMatch));
+                        broadcast->match = _packet->match;
+                        struct Packet *new_rem_packet = malloc(sizeof(struct Packet));
+                        new_rem_packet->id = SERVER_BROADCASTREMOVEMATCH;
+                        new_rem_packet->content = broadcast;
+                        broadcast_packet(clients, new_rem_packet, player_id);
 
                         if(DEBUG) {
                             printf("%s Player id=%d ha accettato la richiesta del Player id=%d per il Match id=%d\n", MSG_DEBUG, player_id, found_match->participants[1]->id, _packet->match);
