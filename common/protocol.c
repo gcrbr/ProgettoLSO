@@ -18,6 +18,7 @@
 // Uso void* perché tipo generico, non so a priori quale pacchetto dovrò ritornare. Dove chiamo faccio poi il casting
 // (SERIALIZZAZIONE IN ENTRATA, byte array->struct)
 void *serialize_packet(struct Packet *packet) {
+    // Client packets
     if(packet->id == CLIENT_JOINMATCH) {
         if(packet->size < 1)    return NULL;
         struct Client_JoinMatch *new = malloc(sizeof(struct Client_JoinMatch));
@@ -28,8 +29,8 @@ void *serialize_packet(struct Packet *packet) {
     if(packet->id == CLIENT_MODIFYREQUEST) {
         if(packet->size < 2)    return NULL;
         struct Client_ModifyRequest *new = malloc(sizeof(struct Client_ModifyRequest));
-        new->accepted = ((int *)packet->content)[0];
-        new->match = ((int *)packet->content)[1];
+        new->accepted = ((char *)packet->content)[0];
+        new->match = ((char *)packet->content)[1];
         return new;
     }
 
@@ -46,6 +47,55 @@ void *serialize_packet(struct Packet *packet) {
     if(packet->id == CLIENT_PLAYAGAIN) {
         if(packet->size < 2)    return NULL;
         struct Client_PlayAgain *new = malloc(sizeof(struct Client_PlayAgain));
+        new->choice = ((char *)packet->content)[0];
+        new->match = ((char *)packet->content)[1];
+        return new;
+    }
+
+    // Server packets
+    if(packet->id == SERVER_HANDSHAKE) {
+        if(packet->size < 1)    return NULL;
+        struct Server_Handshake *new = malloc(sizeof(struct Server_Handshake));
+        new->player_id = ((char *)packet->content)[0];
+        return new;
+    }
+
+    if(packet->id == SERVER_MATCHREQUEST) {
+        if(packet->size < 2)    return NULL;
+        struct Server_MatchRequest *new = malloc(sizeof(struct Server_MatchRequest));
+        new->other_player = ((char *)packet->content)[0];
+        new->match = ((char *)packet->content)[1];
+        return new;
+    }
+
+    if(packet->id == SERVER_UPDATEONREQUEST) {
+        if(packet->size < 2)    return NULL;
+        struct Server_UpdateOnRequest *new = malloc(sizeof(struct Server_UpdateOnRequest));
+        new->accepted = ((char *)packet->content)[0];
+        new->match = ((char *)packet->content)[1];
+        return new;
+    }
+
+    if(packet->id == SERVER_NOTICESTATE) {
+        if(packet->size < 2)    return NULL;
+        struct Server_NoticeState *new = malloc(sizeof(struct Server_NoticeState));
+        new->state = ((char *)packet->content)[0];
+        new->match = ((char *)packet->content)[1];
+        return new;
+    }
+
+    if(packet->id == SERVER_NOTICEMOVE) {
+        if(packet->size < 3)    return NULL;
+        struct Server_NoticeMove *new = malloc(sizeof(struct Server_NoticeMove));
+        new->moveX = ((char *)packet->content)[0];
+        new->moveY = ((char *)packet->content)[1];
+        new->match = ((char *)packet->content)[2];
+        return new;
+    }
+
+    if(packet->id == SERVER_NOTICEPLAYAGAIN) {
+        if(packet->size < 2)    return NULL;
+        struct Server_NoticePlayAgain *new = malloc(sizeof(struct Server_NoticePlayAgain));
         new->choice = ((char *)packet->content)[0];
         new->match = ((char *)packet->content)[1];
         return new;
@@ -71,6 +121,8 @@ void send_packet(int sockfd, struct Packet *packet) {
         Non mando lo struct come byte array perché le differenze tra CPU di client e server
         potrebbero creare problemi.
     */
+
+    // Server packets
     if(packet->id == SERVER_HANDSHAKE) {
         packet->size = 1;
         serialized[3] = ((struct Server_Handshake *)packet->content)->player_id;
@@ -109,6 +161,37 @@ void send_packet(int sockfd, struct Packet *packet) {
         packet->size = 2;
         serialized[3] = ((struct Server_NoticePlayAgain *)packet->content)->choice;
         serialized[4] = ((struct Server_NoticePlayAgain *)packet->content)->match;
+    }
+
+    if(packet->id == SERVER_UPDATEONREQUEST) {
+        packet->size = 2;
+        serialized[3] = ((struct Server_UpdateOnRequest *)packet->content)->accepted;
+        serialized[4] = ((struct Server_UpdateOnRequest *)packet->content)->match;
+    }
+
+    // Client packets
+    if(packet->id == CLIENT_MODIFYREQUEST) {
+        packet->size = 2;
+        serialized[3] = ((struct Client_ModifyRequest *)packet->content)->accepted;
+        serialized[4] = ((struct Client_ModifyRequest *)packet->content)->match;
+    }
+
+    if(packet->id == CLIENT_JOINMATCH) {
+        packet->size = 1;
+        serialized[3] = ((struct Client_JoinMatch *)packet->content)->match;
+    }
+
+    if(packet->id == CLIENT_MAKEMOVE) {
+        packet->size = 3;
+        serialized[3] = ((struct Client_MakeMove *)packet->content)->moveX;
+        serialized[4] = ((struct Client_MakeMove *)packet->content)->moveY;
+        serialized[5] = ((struct Client_MakeMove *)packet->content)->match;
+    }
+
+    if(packet->id == CLIENT_PLAYAGAIN) {
+        packet->size = 2;
+        serialized[3] = ((struct Client_PlayAgain *)packet->content)->choice;
+        serialized[4] = ((struct Client_PlayAgain *)packet->content)->match;
     }
 
     /*

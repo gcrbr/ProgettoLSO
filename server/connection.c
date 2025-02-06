@@ -162,6 +162,13 @@ void handle_packet(struct client *client, struct Packet *packet) {
 
             if((found_match = get_match_by_id(matches, _packet->match)) != NULL) {
                 if(found_match->participants[0]->id == player_id && found_match->requester != NULL) {
+                    struct Server_UpdateOnRequest *update = (struct Server_UpdateOnRequest *)_packet;
+                    struct Packet *update_packet = malloc(sizeof(struct Packet));
+                    update_packet->id = SERVER_UPDATEONREQUEST;
+                    update_packet->content = update;
+                    send_packet(found_match->requester->id, update_packet); // Aggiorno l'altro client su rifiuto o accettazione
+                    free(update_packet);
+                    
                     if(_packet->accepted) {
                         // Ha accettato, inizia la partita
 
@@ -228,6 +235,8 @@ void handle_packet(struct client *client, struct Packet *packet) {
                             //printf("state=%d,expected_player=%d,actual_player=%d\n", found_match->state, moving_player_id, player_id);
                             // Aggiorno la griglia, controllando prima se la casella è libera
                             if(found_match->grid[_packet->moveX][_packet->moveY] == 0) {
+                                int terminated = 0;
+
                                 int other_player_id = player_id == found_match->participants[0]->id ? found_match->participants[1]->id : found_match->participants[0]->id;
 
                                 found_match->grid[_packet->moveX][_packet->moveY] = found_match->state == STATE_TURN_PLAYER1 ? 1 : 2;
@@ -251,17 +260,6 @@ void handle_packet(struct client *client, struct Packet *packet) {
                                     );
                                 }
 
-                                int new_state = found_match->state == STATE_TURN_PLAYER1 ? STATE_TURN_PLAYER2 : STATE_TURN_PLAYER1;
-                                found_match->state = new_state;
-
-                                struct Server_NoticeState *notice_state = malloc(sizeof(struct Server_NoticeState));
-                                notice_state->state = new_state;
-                                struct Packet *notice_turn = malloc(sizeof(struct Packet));
-                                notice_turn->id = SERVER_NOTICESTATE;
-                                notice_turn->content = notice_state;
-                                send_packet(other_player_id, notice_turn);
-                                free(notice_turn);
-
                                 send_empty_packet(client, SERVER_SUCCESS);
 
                                 // Controllo se qualcuno ha vinto
@@ -277,6 +275,8 @@ void handle_packet(struct client *client, struct Packet *packet) {
 
                                     (0, 0), (1, 1), (2, 2)	Diagonali
                                     (2, 0), (1, 1), (0, 2)
+
+                                    Si poteva usare un for in realtà...
                                 */
                                 for(int i = 1; i < 3; ++i) { // Lo faccio per i valori 1, 2 cioè X e Cerchio
                                     if(
@@ -289,8 +289,9 @@ void handle_packet(struct client *client, struct Packet *packet) {
                                         (found_match->grid[2][0] == i && found_match->grid[2][1] == i && found_match->grid[2][2] == i) ||
 
                                         (found_match->grid[0][0] == i && found_match->grid[1][1] == i && found_match->grid[2][2] == i) ||
-                                        (found_match->grid[2][0] == i && found_match->grid[1][1] == i && found_match->grid[2][0] == i)
+                                        (found_match->grid[2][0] == i && found_match->grid[1][1] == i && found_match->grid[0][2] == i)
                                     ) {
+                                        terminated = 1;
                                         found_match->state = STATE_TERMINATED;
 
                                         struct Server_NoticeState *notice_packet = malloc(sizeof(struct Server_NoticeState));
@@ -315,6 +316,7 @@ void handle_packet(struct client *client, struct Packet *packet) {
                             
                                 // Controllo se siamo in pareggio; cioè se nessuno ha vinto ma sono finite le caselle
                                 if(found_match->free_slots == 0) {
+                                    terminated = 1;
                                     found_match->state = STATE_TERMINATED;
 
                                     struct Server_NoticeState *notice_packet = malloc(sizeof(struct Server_NoticeState));
@@ -334,6 +336,19 @@ void handle_packet(struct client *client, struct Packet *packet) {
                                     }
 
                                     free(new_packet);
+                                }
+
+                                if(!terminated) {
+                                    int new_state = found_match->state == STATE_TURN_PLAYER1 ? STATE_TURN_PLAYER2 : STATE_TURN_PLAYER1;
+                                    found_match->state = new_state;
+
+                                    struct Server_NoticeState *notice_state = malloc(sizeof(struct Server_NoticeState));
+                                    notice_state->state = new_state;
+                                    struct Packet *notice_turn = malloc(sizeof(struct Packet));
+                                    notice_turn->id = SERVER_NOTICESTATE;
+                                    notice_turn->content = notice_state;
+                                    send_packet(other_player_id, notice_turn);
+                                    free(notice_turn);
                                 }
                             }else {
                                 if(DEBUG) {
@@ -486,7 +501,6 @@ void *server_thread(void *args) {
             char *block = buffer + (received - total);
             struct Packet *packet = malloc(sizeof(struct Packet));
             packet->id = block[0];
-            packet->size = 0;
             packet->size = block[1] + (block[2] << 8); // Little endian Int -> C Int
             packet->content = malloc(sizeof(char) * packet->size);
             memcpy(packet->content, block + 3, packet->size);

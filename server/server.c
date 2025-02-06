@@ -97,6 +97,8 @@ void init_socket() {
                     remove_node((struct generic_node **)&clients, (void *)new_client);
                     free(new_client);
                 }
+
+                pthread_detach(joiner_thread_id);
             }else {
                 close(conn);
                 printf("%s Impossibile accettare nuova connessione. Limite massimo raggiunto (%d)\n", MSG_WARNING, curr_clients_size);
