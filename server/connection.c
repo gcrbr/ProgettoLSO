@@ -62,6 +62,7 @@ void handle_packet(struct client *client, struct Packet *packet) {
         if(client->player->id == -1) {
             player->id = player_id;
         }
+        // Ricambio l'handshake e comunico il suo player id
         struct Server_Handshake *handshake = malloc(sizeof(struct Server_Handshake));
         handshake->player_id = player_id;
         struct Packet *new_packet = malloc(sizeof(struct Packet));
@@ -69,6 +70,25 @@ void handle_packet(struct client *client, struct Packet *packet) {
         new_packet->content = handshake;
         send_packet(client->conn, new_packet);
         free(new_packet);
+
+        // Avviso il nuovo giocatore delle partite disponibili nel sistema
+        struct MatchList *curr = matches;
+        int index = 0;
+        while(curr != NULL) {
+            if(!curr->val->participants[0]->busy) {
+                printf("avviso della partita n.%d\n", index);
+                struct Server_BroadcastMatch *broadcast = malloc(sizeof(struct Server_BroadcastMatch));
+                broadcast->player_id = curr->val->participants[0]->id;
+                broadcast->match = index;
+                struct Packet *bc_packet = malloc(sizeof(struct Packet));
+                bc_packet->id = SERVER_BROADCASTMATCH;
+                bc_packet->content = broadcast;
+                send_packet(client->conn, bc_packet);
+                free(bc_packet);
+            }
+            curr = curr->next;
+            index++;
+        }
     }
 
     // Si deve passare prima per l'handshake per creare il Player, poi si può fare il resto

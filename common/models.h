@@ -29,8 +29,6 @@ struct RequestNode {
     struct RequestNode *next;
 };
 
-
-
 struct Match {
     struct Player *participants[2];
     struct RequestNode *requests_head; // Testa della coda delle richieste

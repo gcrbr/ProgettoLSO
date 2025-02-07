@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
     pthread_t client_t;
     pthread_t ui_t;
 
-    printf("Tris Client\n\n");
+    clear_screen();
 
     if(argc == 3) { // Sono stati passati IP e porta manualmente
         ip = argv[1];

@@ -56,7 +56,6 @@ void game_ui(int sockfd) {
             }
 
             if(game_state == STATE_WIN || game_state == STATE_LOSE || game_state == STATE_DRAW) {
-                game_state = -1;
                 char play_again = 0;
                 clear_grid(grid);
                 do {
@@ -65,12 +64,21 @@ void game_ui(int sockfd) {
                 } while(play_again != 's' && play_again != 'S' && play_again != 'n' && play_again != 'N');
                 send_play_again(sockfd, play_again=='s'||play_again=='S', curr_match_id);
 
-                if(other_player_play_again == 0 || play_again == 'n' || play_again == 'N') {
+                if(play_again == 'n' || play_again == 'N') {
                     clear_screen();
-                    if(other_player_play_again == 0) {
-                        printf("Il giocatore ha rifiutato la rivincita\n\n");
-                    }
                     clear_game_vars();
+                    break;
+                }else {
+                    game_state = -2;
+                }
+            }
+
+            if(game_state == -2) { // Attesa della risposta dell'altro giocatore per rigiocare
+                if(other_player_play_again == 0) {
+                    game_state = -1;
+                    printf("\nIl giocatore ha rifiutato la rivincita\n\n");
+                    clear_game_vars();
+                    clear_screen();
                     break;
                 }
             }
@@ -106,6 +114,7 @@ void *ui_thread(void *_sockfd) {
     int scelta = 0;
     while(1) {
         if(player_id != -1) {
+            //clear_screen();
             printf("MENU\n");
             printf("1.  Crea una nuova partita\n");
             printf("2.  Visualizza partite disponibili\n");
@@ -123,9 +132,9 @@ void *ui_thread(void *_sockfd) {
                 game_ui(sockfd);
             }
 
-            if(scelta==2){
-                scelta=-1;
-                printf("%s Partite disponibili \n",MSG_INFO);
+            if(scelta == 2){
+                scelta = -1;
+                printf("\n%s Partite disponibili: \n", MSG_INFO);
                 print_available_matches();
             }
 
@@ -139,7 +148,7 @@ void *ui_thread(void *_sockfd) {
                 printf("%s Inviata richiesta di accesso, attendendo risposta...\n\n", MSG_INFO);
                 while(accepted == -1) {}
                 if(accepted) {
-                    printf("ha accetttt");
+                    //printf("ha accetttt");
                     accepted = -1;
                     game_ui(sockfd);
                 }

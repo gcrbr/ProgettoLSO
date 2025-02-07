@@ -58,6 +58,10 @@ void handle_packet(int client, struct Packet *packet) {
         }
     }
 
+    if(player_id == -1) { // Non si procede se non mi è stato assegnato un player id
+        return;
+    }
+
     if(packet->id == SERVER_MATCHREQUEST) {
         if(serialized != NULL ) {
             struct Server_MatchRequest *_packet = (struct Server_MatchRequest *)serialized;
@@ -177,10 +181,6 @@ void handle_packet(int client, struct Packet *packet) {
             }
         } 
     }
-
-    if(player_id == -1) { // Non si procede se non mi è stato assegnato un player id
-        return;
-    }
 }
 
 struct Server_BroadcastMatch* find_node(struct Available_matches* head, int match){
@@ -197,13 +197,14 @@ struct Server_BroadcastMatch* find_node(struct Available_matches* head, int matc
     return NULL;
 }
 
-void print_available_matches(){
-    struct Available_matches* curr=availableMatches;
-    while(curr!=NULL){
-        struct Server_BroadcastMatch* broadc=curr->broad;
-        printf("id match: %d , id player: %d\n", broadc->match, broadc->player_id);
+void print_available_matches() {
+    struct Available_matches* curr = availableMatches;
+    while(curr != NULL) {
+        struct Server_BroadcastMatch* broadc = curr->broad;
+        printf("(*) Match #%d del giocatore #%d\n", broadc->match, broadc->player_id);
         curr=curr->next;
     }
+    printf("\n");
 }
 
 void create_match(int sockfd) {
