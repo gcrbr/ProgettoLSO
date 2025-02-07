@@ -22,8 +22,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
-
 int player_id = -1;
 
 struct Available_matches* availableMatches=NULL;

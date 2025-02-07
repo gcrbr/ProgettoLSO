@@ -1,4 +1,5 @@
-# Progetto LSO
+# Progetto LSO: Tris
+## Traccia
 Lo studente dovrà realizzare un server multi-client per giocare a Tris (con due giocatori per ogni
 partita). Un giocatore può creare una o più partite, ma può giocare solo ad una partita alla volta. Il
 creatore di una partita può accettare o rifiutare la richiesta di partecipazione alla partita da un nuovo

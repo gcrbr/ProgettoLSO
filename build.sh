@@ -1,12 +1,16 @@
-printf "=%.0s" $(seq 10)
-echo "\nBuilding..."
-rm -f run_client run_server
-client=$(find client -iname '*.c' | tr -s '\n' ' ' | sed 's/.$//')
-server=$(find server -iname '*.c' | tr -s '\n' ' ' | sed 's/.$//')
-common=$(find common -iname '*.c' | tr -s '\n' ' ' | sed 's/.$//')
-gcc $common $client -o run_client
-gcc $common $server -o run_server
-locs=$(cat $common $client $server | wc -l | awk '{print $1}')
-echo "Built ($locs lines of code)"
-printf "=%.0s" $(seq 10)
-echo ""
+#!/bin/bash
+if [ "$1" == "client" ] || [ "$1" == "server" ]; then
+    printf "=%.0s" $(seq 10)
+    echo ""
+    echo "Building $1..."
+    common=$(find common -iname '*.c' | tr -s '\n' ' ' | sed 's/.$//')
+    build=$(find "$1" -iname '*.c' | tr -s '\n' ' ' | sed 's/.$//')
+    rm -f "run_$1"
+    gcc $common $build -o "run_$1"
+    locs=$(cat $common $build | wc -l | awk '{print $1}')
+    echo "Built ($locs lines of code)"
+    printf "=%.0s" $(seq 10)
+    echo ""
+else
+    echo "Invalid arguments"
+fi

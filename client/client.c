@@ -27,7 +27,7 @@
 #include <pthread.h>
 
 #define DEFAULT_IP      "127.0.0.1"
-#define DEFAULT_PORT    8080
+#define DEFAULT_PORT    5555
 
 #define BUFFER_SIZE     1024
 
@@ -60,6 +60,9 @@ void *client_thread(void *_sockfd) {
 }
 
 int main(int argc, char **argv) {
+    // Unbuffered output su STDOUT, altrimenti da problemi con Docker
+    setvbuf(stdout, NULL, _IONBF, 0);
+    
     char *ip = DEFAULT_IP;
     int port = DEFAULT_PORT;
     int sockfd = 0;
@@ -100,6 +103,7 @@ int main(int argc, char **argv) {
 
     struct Packet *packet = malloc(sizeof(struct Packet));
     packet->id = CLIENT_HANDSHAKE;
+    packet->content = NULL;
     send_packet(sockfd, packet);
     free(packet);
 

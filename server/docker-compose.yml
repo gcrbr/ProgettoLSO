@@ -1,0 +1,13 @@
+services:
+  tris_server:
+    build:
+      context: ..
+      dockerfile: ./server/Dockerfile
+    container_name: lso-tris-server
+    ports: # Porta da aprire
+      - "5555:5555"
+    volumes: # Monto file e cartelle del progetto
+      - ../build.sh:/tris/build.sh
+      - ../common:/tris/common
+      - ./server:/tris/server
+    #network_mode: "host" # Permetto connessioni esterne

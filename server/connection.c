@@ -76,7 +76,6 @@ void handle_packet(struct client *client, struct Packet *packet) {
         int index = 0;
         while(curr != NULL) {
             if(!curr->val->participants[0]->busy) {
-                printf("avviso della partita n.%d\n", index);
                 struct Server_BroadcastMatch *broadcast = malloc(sizeof(struct Server_BroadcastMatch));
                 broadcast->player_id = curr->val->participants[0]->id;
                 broadcast->match = index;

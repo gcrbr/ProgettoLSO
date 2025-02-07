@@ -23,7 +23,7 @@
 #include <string.h>
 #include <errno.h>
 
-#define PORT 8080
+#define PORT 5555
 #define MAX_CLIENTS 255
 
 struct client_node *clients;
@@ -111,6 +111,9 @@ void init_socket(int port) {
 }
 
 int main(int argc, char **argv) {
+    // Unbuffered output su STDOUT, altrimenti da problemi con Docker
+    setvbuf(stdout, NULL, _IONBF, 0);
+    
     int port = PORT;
     printf("Tris Server\n\n");
 
