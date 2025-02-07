@@ -28,7 +28,7 @@
 
 struct client_node *clients;
 
-void init_socket() {
+void init_socket(int port) {
     int sockfd = 0;
     int opt = 0;
     struct sockaddr_in address;
@@ -49,7 +49,7 @@ void init_socket() {
     
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(PORT);
+    address.sin_port = htons(port);
 
     if(bind(sockfd, (struct sockaddr*)&address, sizeof(address)) < 0) {
         fprintf(stderr, "%s Impossibile eseguire funzione bind: %s\n", MSG_ERROR, strerror(errno));
@@ -110,9 +110,18 @@ void init_socket() {
     close(sockfd);
 }
 
-int main() {
+int main(int argc, char **argv) {
+    int port = PORT;
     printf("Tris Server\n\n");
-    printf("%s Utilizzando la porta %d\n", MSG_INFO, PORT);
-    init_socket();
+
+    if(argc == 2) {
+        if((sscanf(argv[1], "%d", &port)) <= 0 || port < 0 || port > 65535) {
+            fprintf(stderr, "%s È stata fornita una porta non valida come parametro (%s)\n", MSG_ERROR, argv[2]);
+            return 1;
+        }
+    }
+
+    printf("%s Utilizzando la porta %d\n", MSG_INFO, port);
+    init_socket(port);
     return 0;
 }
