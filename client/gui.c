@@ -14,6 +14,7 @@
 #endif
 
 #include <stdio.h>
+#include <stdlib.h>
 
 int is_in_game_menu = 0;
 int accepted = -1;
@@ -41,7 +42,7 @@ void game_ui(int sockfd) {
     is_in_game_menu = 1;
     clear_screen();
     printf("MENU DI GIOCO\n");
-    printf("Premi Q per uscire\n\n");
+    printf("Premi Ctrl+C per uscire\n\n");
     while(1) {
         if(game_running && game_state != -1) {
             if(game_state == STATE_WIN) {
@@ -119,8 +120,9 @@ void *ui_thread(void *_sockfd) {
             printf("1.  Crea una nuova partita\n");
             printf("2.  Visualizza partite disponibili\n");
             printf("3.  Unisciti ad una partita\n");
+            printf("4.  Esci\n");
             printf("> Scegli opzione: ");
-            if(scanf("%d", &scelta) < 0 || scelta < 1 || scelta > 3) {
+            if(scanf("%d", &scelta) < 0 || scelta < 1 || scelta > 4) {
                 fprintf(stderr, "%s Valore non valido fornito come scelta\n", MSG_ERROR);
             }
 
@@ -134,7 +136,6 @@ void *ui_thread(void *_sockfd) {
 
             if(scelta == 2){
                 scelta = -1;
-                printf("\n%s Partite disponibili: \n", MSG_INFO);
                 print_available_matches();
             }
 
@@ -153,6 +154,11 @@ void *ui_thread(void *_sockfd) {
                     game_ui(sockfd);
                 }
                 accepted = -1;
+            }
+
+            if(scelta == 4) {
+                scelta = -1;
+                exit(0);
             }
         }
     }

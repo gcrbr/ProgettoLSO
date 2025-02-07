@@ -199,9 +199,14 @@ struct Server_BroadcastMatch* find_node(struct Available_matches* head, int matc
 
 void print_available_matches() {
     struct Available_matches* curr = availableMatches;
+    if(curr == NULL) {
+        printf("\n%s Nessuna partita disponibile.\n", MSG_INFO);
+    }else {
+        printf("\n%s Partite disponibili:\n", MSG_INFO);
+    }
     while(curr != NULL) {
         struct Server_BroadcastMatch* broadc = curr->broad;
-        printf("(*) Match #%d del giocatore #%d\n", broadc->match, broadc->player_id);
+        printf("(*) Match \x1b[35m#%d\x1b[0m del giocatore \x1b[35m#%d\x1b[0m\n", broadc->match, broadc->player_id);
         curr=curr->next;
     }
     printf("\n");
