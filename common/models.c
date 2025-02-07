@@ -96,3 +96,25 @@ struct Match *get_match_by_id(struct MatchList *head, int id) {
     }
     return NULL;
 }
+
+void add_requester(struct Match* match, struct RequestNode* node){
+    if(match->requests_tail==NULL){
+        match->requests_head=node;
+
+    }else{
+        match->requests_tail->next = node;
+    }
+    match->requests_tail=node;
+}
+
+void delete_from_head(struct Match* match){
+    if(match->requests_head==NULL){
+        return;
+    }
+    struct RequestNode* temp=match->requests_head;
+    match->requests_head=match->requests_head->next;
+    if(match->requests_head == NULL) {
+        match->requests_tail = NULL;
+    }
+    free(temp);
+}

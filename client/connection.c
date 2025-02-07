@@ -59,10 +59,10 @@ void handle_packet(int client, struct Packet *packet) {
     }
 
     if(packet->id == SERVER_MATCHREQUEST) {
-        if(serialized != NULL) {
+        if(serialized != NULL ) {
             struct Server_MatchRequest *_packet = (struct Server_MatchRequest *)serialized;
             char risposta = 0;
-            if(is_in_game_menu) {
+            if(is_in_game_menu && !game_running) {
                 printf("%s Il giocatore #%d vorrebbe unirsi alla tua partita #%d\n", MSG_INFO, _packet->other_player, _packet->match);
                 do {
                     printf("Accetti? (S/N): ");
@@ -82,8 +82,17 @@ void handle_packet(int client, struct Packet *packet) {
                 new_packet->content = modify;
                 send_packet(client, new_packet);
                 free(new_packet);
+            }else{
+                struct Client_ModifyRequest *modify = malloc(sizeof(struct Client_ModifyRequest));
+                modify->accepted = risposta;
+                modify->match = _packet->match;
+                struct Packet *new_packet = malloc(sizeof(struct Packet));
+                new_packet->id = CLIENT_MODIFYREQUEST;
+                new_packet->content = modify;
+                send_packet(client, new_packet);
+                free(new_packet);
             }
-        }else {
+        }else{
             if(DEBUG) {
                 printf("%s Ho ricevuto un pacchetto non serializzabile (id=%d)\n", MSG_DEBUG, packet->id);
             }

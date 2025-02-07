@@ -24,9 +24,18 @@ struct Player {
 
 #define MAX_MATCHES         255
 
+struct RequestNode {
+    struct Player *requester;
+    struct RequestNode *next;
+};
+
+
+
 struct Match {
     struct Player *participants[2];
-    struct Player *requester;
+    struct RequestNode *requests_head; // Testa della coda delle richieste
+    struct RequestNode *requests_tail; // Coda della coda delle richieste
+
     char grid[3][3];        // 1 = X, 2 = Cerchio
     int free_slots;          // Parte da 9, quando si raggiunge 0 e non ha ancora vinto nessuno è pareggio
     int state;
@@ -53,3 +62,5 @@ void add_node(struct generic_node **head, void *node);
 void remove_node(struct generic_node **head, void *node_to_remove);
 void remove_matches_by_player(struct MatchList **head, int player_id);
 struct Match *get_match_by_id(struct MatchList *head, int id);
+void add_requester(struct Match* match, struct RequestNode* node);
+void delete_from_head(struct Match* match);
