@@ -181,14 +181,14 @@ void handle_packet(int client, struct Packet *packet) {
     }
 }
 
-struct Server_BroadcastMatch* find_node(struct Available_matches* head, int match){
-    if(head==NULL){
+struct Server_BroadcastMatch *find_node(struct Available_matches *head, int match){
+    if(head == NULL) {
         return NULL;
     }
     struct Available_matches * curr = head;
-    while (curr!=NULL){
-        if(curr->broad->match==match){
-                return curr->broad;
+    while(curr != NULL) {
+        if(curr->broad->match == match) {
+            return curr->broad;
         }
         curr=curr->next;
     }
@@ -196,7 +196,7 @@ struct Server_BroadcastMatch* find_node(struct Available_matches* head, int matc
 }
 
 void print_available_matches() {
-    struct Available_matches* curr = availableMatches;
+    struct Available_matches *curr = availableMatches;
     if(curr == NULL) {
         printf("\n%s Nessuna partita disponibile.\n", MSG_INFO);
     }else {
@@ -205,7 +205,7 @@ void print_available_matches() {
     while(curr != NULL) {
         struct Server_BroadcastMatch* broadc = curr->broad;
         printf("(*) Match \x1b[35m#%d\x1b[0m del giocatore \x1b[35m#%d\x1b[0m\n", broadc->match, broadc->player_id);
-        curr=curr->next;
+        curr = curr->next;
     }
     printf("\n");
 }

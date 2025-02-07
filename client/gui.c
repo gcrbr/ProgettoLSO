@@ -115,7 +115,6 @@ void *ui_thread(void *_sockfd) {
     int scelta = 0;
     while(1) {
         if(player_id != -1) {
-            //clear_screen();
             printf("MENU\n");
             printf("1.  Crea una nuova partita\n");
             printf("2.  Visualizza partite disponibili\n");
@@ -149,7 +148,6 @@ void *ui_thread(void *_sockfd) {
                 printf("%s Inviata richiesta di accesso, attendendo risposta...\n\n", MSG_INFO);
                 while(accepted == -1) {}
                 if(accepted) {
-                    //printf("ha accetttt");
                     accepted = -1;
                     game_ui(sockfd);
                 }
