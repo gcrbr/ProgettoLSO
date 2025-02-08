@@ -86,15 +86,32 @@ void remove_matches_by_player(struct MatchList **head, int player_id) {
 
 struct Match *get_match_by_id(struct MatchList *head, int id) {
     struct MatchList *current = head;
-    int index = 0;
     while(current != NULL) {
-        if(index == id) {
+        if(current->val->id == id) {
             return current->val;
         }
         current = current->next;
-        index++;
+
     }
     return NULL;
+}
+
+int find_free_id() {
+    for (int id = 0; id < MAX_MATCHES; id++) {
+        int found = 0;
+        struct MatchList *curr = matches; 
+        while (curr != NULL) {
+            if (curr->val->id == id) {
+                found = 1;
+                break;
+            }
+            curr = curr->next; 
+        }
+        if (!found) {
+            return id;
+        }
+    }
+    return -1; // Nessun id libero trovato
 }
 
 void add_requester(struct Match* match, struct RequestNode* node){

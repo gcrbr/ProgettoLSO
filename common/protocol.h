@@ -21,6 +21,7 @@ void send_packet(int sockfd, struct Packet *packet);
 #define CLIENT_MODIFYREQUEST     4
 #define CLIENT_MAKEMOVE          5
 #define CLIENT_PLAYAGAIN         6
+#define CLIENT_WINNERPLAYAGAIN   7 //Avvisa che vuole rigiocare e se non era il creatore della partita lo diventa
 
 struct Client_JoinMatch {
     int match;
@@ -57,6 +58,7 @@ struct Client_PlayAgain {
 #define SERVER_BROADCASTMATCH    26 // Avvisa a tutti i client connessi della nuova partita creata
 #define SERVER_NOTICEPLAYAGAIN   27 // Avvisa i due client della nuova partita creata (se hanno detto entrambi sì)
 #define SERVER_BROADCASTREMOVEMATCH 28 //Avvisa che quella partita non è più disponibile
+#define SERVER_INVALIDMATCH      29
 
 struct Server_Handshake {
     int player_id;

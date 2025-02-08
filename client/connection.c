@@ -39,6 +39,12 @@ void clear_game_vars() {
     clear_grid(grid);
 }
 
+void new_match_game_vars(){
+    game_running=0;
+    game_owned=1;
+    other_player_play_again = -1;
+    clear_grid(grid);
+}
 void handle_packet(int client, struct Packet *packet) {
     void *serialized = serialize_packet(packet);
 
@@ -179,6 +185,17 @@ void handle_packet(int client, struct Packet *packet) {
             }
         } 
     }
+
+    if(packet->id == SERVER_INVALIDMATCH){
+        if(packet->size==0){
+        accepted=0;            
+        printf("%s Richiesta di accesso non valida\n", MSG_INFO);
+        }else {
+            if(DEBUG) {
+                printf("%s Ho ricevuto un pacchetto sbagliato\n", MSG_DEBUG);
+            }
+        } 
+    }
 }
 
 struct Server_BroadcastMatch *find_node(struct available_matches *head, int match) {
@@ -245,6 +262,17 @@ void send_play_again(int sockfd, int choice, int match) {
     play->match = match;
     struct Packet *packet = malloc(sizeof(struct Packet));
     packet->id = CLIENT_PLAYAGAIN;
+    packet->content = play;
+    send_packet(sockfd, packet);
+    free(packet);
+}
+
+void send_winner_play_again(int sockfd, int choice, int match){
+    struct Client_PlayAgain *play = malloc(sizeof(struct Client_PlayAgain));
+    play->choice = choice;
+    play->match = match;
+    struct Packet *packet = malloc(sizeof(struct Packet));
+    packet->id = CLIENT_WINNERPLAYAGAIN;
     packet->content = play;
     send_packet(sockfd, packet);
     free(packet);

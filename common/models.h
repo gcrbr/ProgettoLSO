@@ -40,6 +40,7 @@ struct Match {
     
     int play_again_counter;         // Conteggio dei voti per rigiocare, 0=Nessuno, 1=Uno ha detto sì, 2=Anche l'altro ha detto sì
     struct Player *play_again[2];   // Array dei giocatori che hanno detto sì
+    int id;
 };
 
 struct MatchList {
@@ -62,3 +63,4 @@ void remove_matches_by_player(struct MatchList **head, int player_id);
 struct Match *get_match_by_id(struct MatchList *head, int id);
 void add_requester(struct Match* match, struct RequestNode* node);
 void delete_from_head(struct Match* match);
+int find_free_id();

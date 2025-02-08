@@ -73,12 +73,11 @@ void handle_packet(struct client *client, struct Packet *packet) {
 
         // Avviso il nuovo giocatore delle partite disponibili nel sistema
         struct MatchList *curr = matches;
-        int index = 0;
         while(curr != NULL) {
             if(!curr->val->participants[0]->busy) {
                 struct Server_BroadcastMatch *broadcast = malloc(sizeof(struct Server_BroadcastMatch));
                 broadcast->player_id = curr->val->participants[0]->id;
-                broadcast->match = index;
+                broadcast->match = curr->val->id;
                 struct Packet *bc_packet = malloc(sizeof(struct Packet));
                 bc_packet->id = SERVER_BROADCASTMATCH;
                 bc_packet->content = broadcast;
@@ -86,7 +85,6 @@ void handle_packet(struct client *client, struct Packet *packet) {
                 free(bc_packet);
             }
             curr = curr->next;
-            index++;
         }
     }
 
@@ -105,6 +103,7 @@ void handle_packet(struct client *client, struct Packet *packet) {
             new_match->play_again_counter = 0;
             new_match->requests_head=NULL;
             new_match->requests_tail=NULL;
+            new_match->id=find_free_id();
 
             add_node((struct generic_node **)&matches, (void *)new_match);
             ++curr_matches_size;
@@ -112,13 +111,13 @@ void handle_packet(struct client *client, struct Packet *packet) {
             send_empty_packet(client, SERVER_SUCCESS);
 
             if(DEBUG) {
-                printf("%s Il Player id=%d ha creato una nuova partita con id %d\n", MSG_DEBUG, player_id, curr_matches_size-1);
+                printf("%s Il Player id=%d ha creato una nuova partita con id %d\n", MSG_DEBUG, player_id, new_match->id);
             }
 
             // Avviso tutti i client connessi della nuova partita creata
             struct Server_BroadcastMatch *broadcast = malloc(sizeof(struct Server_BroadcastMatch));
             broadcast->player_id = player_id;
-            broadcast->match = curr_matches_size - 1;
+            broadcast->match = new_match->id;
             struct Packet *new_packet = malloc(sizeof(struct Packet));
             new_packet->id = SERVER_BROADCASTMATCH;
             new_packet->content = broadcast;
@@ -160,13 +159,13 @@ void handle_packet(struct client *client, struct Packet *packet) {
                         if(DEBUG) {
                             printf("%s Il Player id=%d ha provato ad entrare nel suo stesso Match id=%d\n", MSG_DEBUG, player_id, _packet->match);
                         }
-                        send_empty_packet(client, SERVER_ERROR);
+                        send_empty_packet(client, SERVER_INVALIDMATCH);
                     }
                 }else {
                     if(DEBUG) {
                         printf("%s Il Player id=%d ha provato ad entrare in un Match id=%d non valido\n", MSG_DEBUG, player_id, _packet->match);
                     }
-                    send_empty_packet(client, SERVER_ERROR);
+                    send_empty_packet(client, SERVER_INVALIDMATCH);
                 }
             }else {
                 if(DEBUG) {
@@ -546,6 +545,68 @@ void handle_packet(struct client *client, struct Packet *packet) {
             }
         }
     }
+
+    if(packet->id == CLIENT_WINNERPLAYAGAIN) {
+        if(serialized != NULL) {
+            struct Client_PlayAgain *_packet = (struct Client_PlayAgain *)serialized;
+            struct Match *found_match;
+
+            if((found_match = get_match_by_id(matches, _packet->match)) != NULL) {
+                if(found_match->state == STATE_TERMINATED) {
+                    if(found_match->participants[0]->id == player_id || found_match->participants[1]->id == player_id){
+                        found_match->participants[0]->busy=0;
+                        found_match->participants[1]->busy=0;                         
+                        if(_packet->choice) { 
+
+                            memset(found_match->grid, 0, sizeof(found_match->grid[0][0]) * 9);
+                            found_match->free_slots = 9;
+
+                            if(found_match->participants[1]->id == player_id) {
+                                
+                                found_match->participants[0]=found_match->participants[1];
+                                found_match->participants[1]=NULL;
+                            }
+                            struct Server_BroadcastMatch *broadcast = malloc(sizeof(struct Server_BroadcastMatch));
+                            broadcast->player_id = player_id;
+                            broadcast->match = found_match->id;
+                            struct Packet *new_packet = malloc(sizeof(struct Packet));
+                            new_packet->id = SERVER_BROADCASTMATCH;
+                            new_packet->content = broadcast;
+                            broadcast_packet(clients, new_packet, player_id);
+                            free(new_packet);               
+                        }else{
+                            remove_node((struct generic_node **)&matches, found_match);
+                            curr_matches_size--;
+                            if(DEBUG) {
+                                printf("%s Il vincitore della partita Match id=%d non vuole rigiocare\n", MSG_DEBUG, _packet->match);
+                            }
+                        }
+                    }else{
+                        if(DEBUG) {
+                            printf("%s Il Player id=%d ha provato a rigiocare in un Match id=%d di cui non fa parte\n", MSG_DEBUG, player_id, _packet->match);
+                        }
+                        send_empty_packet(client, SERVER_ERROR);
+                    }
+
+                }else {
+                    if(DEBUG) {
+                        printf("%s Il Player id=%d ha provato a rigiocare in un Match id=%d non ancora terminato\n", MSG_DEBUG, player_id, _packet->match);
+                    }
+                    send_empty_packet(client, SERVER_ERROR);
+                }
+            }else {
+                if(DEBUG) {
+                    printf("%s Il Player id=%d ha provato a rigiocare in un Match id=%d non valido\n", MSG_DEBUG, player_id, _packet->match);
+                }
+                send_empty_packet(client, SERVER_ERROR);
+            }
+        }else {
+            if(DEBUG) {
+                printf("%s Player id=%d ha inviato un Packet id=%d non serializzabile\n", MSG_DEBUG, player_id, packet->id);
+            }
+        }
+    }
+
 }
 
 void *server_thread(void *args) {

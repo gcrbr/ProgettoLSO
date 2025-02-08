@@ -48,15 +48,35 @@ void game_ui(int sockfd) {
             if(game_state == STATE_WIN) {
                 print_grid();
                 printf("\nComplimenti, hai vinto!\n");
+                char win_play_again = 0;
+                clear_grid(grid);
+                do {
+                    printf("\nVuoi giocare ancora? (S/N): ");
+                    scanf(" %c", &win_play_again);
+                } while(win_play_again != 's' && win_play_again != 'S' && win_play_again != 'n' && win_play_again != 'N');
+                send_winner_play_again(sockfd, win_play_again=='s'||win_play_again=='S', curr_match_id);
+                if(win_play_again == 'n' || win_play_again == 'N') {
+                    game_state=-1;
+                    clear_screen();
+                    clear_game_vars();
+                    break;
+                }else {
+                    game_state=STATE_CREATED;
+                    clear_screen();
+                    new_match_game_vars();
+                    printf("MENU DI GIOCO\n");
+                    printf("Premi Ctrl+C per uscire\n\n");
+                }
             }else if(game_state == STATE_LOSE) {
                 print_grid();
                 printf("\nOh no, hai perso...\n");
+                game_state=-1;
+                clear_game_vars();
+                clear_screen();
+                break;
             }else if(game_state == STATE_DRAW) {
                 print_grid();
                 printf("\nPareggio!\n");
-            }
-
-            if(game_state == STATE_WIN || game_state == STATE_LOSE || game_state == STATE_DRAW) {
                 char play_again = 0;
                 clear_grid(grid);
                 do {
@@ -66,6 +86,7 @@ void game_ui(int sockfd) {
                 send_play_again(sockfd, play_again=='s'||play_again=='S', curr_match_id);
 
                 if(play_again == 'n' || play_again == 'N') {
+                    game_state=-1;
                     clear_screen();
                     clear_game_vars();
                     break;
@@ -92,6 +113,8 @@ void game_ui(int sockfd) {
                 printf("È il tuo turno\n");
 
                 do {
+                    while (getchar() != '\n');
+                    printf("Sei %c \n", game_owned ? 'X' : 'O');
                     printf("Mossa (Riga,Colonna): ");
                 } while (scanf("%d,%d", &mossaY, &mossaX) != 2 ||
                     mossaX < 1 || mossaX > 3 ||
@@ -122,7 +145,7 @@ void *ui_thread(void *_sockfd) {
             printf("4.  Esci\n");
             printf("> Scegli opzione: ");
             if(scanf("%d", &scelta) < 0 || scelta < 1 || scelta > 4) {
-                fprintf(stderr, "%s Valore non valido fornito come scelta\n", MSG_ERROR);
+                fprintf(stderr, "%s Valore non valido fornito come scelta %d\n", MSG_ERROR, scelta);
             }
 
             if(scelta == 1) {
@@ -151,6 +174,7 @@ void *ui_thread(void *_sockfd) {
                     accepted = -1;
                     game_ui(sockfd);
                 }
+                while (getchar() != '\n');
                 accepted = -1;
             }
 

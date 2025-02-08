@@ -52,6 +52,14 @@ void *serialize_packet(struct Packet *packet) {
         return new;
     }
 
+    if(packet->id == CLIENT_WINNERPLAYAGAIN){
+        if(packet->size < 2)    return NULL;
+        struct Client_PlayAgain *new = malloc(sizeof(struct Client_PlayAgain));
+        new->choice = ((char *)packet->content)[0];
+        new->match = ((char *)packet->content)[1];
+        return new;
+    }
+
     // Server packets
     if(packet->id == SERVER_HANDSHAKE) {
         if(packet->size < 1)    return NULL;
@@ -142,7 +150,7 @@ void send_packet(int sockfd, struct Packet *packet) {
         serialized[3] = ((struct Server_Handshake *)packet->content)->player_id;
     }
     
-    if(packet->id == SERVER_SUCCESS || packet->id == SERVER_ERROR) {
+    if(packet->id == SERVER_SUCCESS || packet->id == SERVER_ERROR || packet->id == SERVER_INVALIDMATCH) {
         packet->size = 0;
     }
 
@@ -211,6 +219,12 @@ void send_packet(int sockfd, struct Packet *packet) {
         packet->size = 2;
         serialized[3] = ((struct Client_PlayAgain *)packet->content)->choice;
         serialized[4] = ((struct Client_PlayAgain *)packet->content)->match;
+    }
+
+    if(packet->id == CLIENT_WINNERPLAYAGAIN){
+        packet->size = 2;
+        serialized[3] = ((struct Client_PlayAgain *)packet->content)->choice;
+        serialized[4] = ((struct Client_PlayAgain *)packet->content)->match;        
     }
 
     /*
