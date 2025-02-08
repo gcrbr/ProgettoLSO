@@ -24,7 +24,7 @@
 
 int player_id = -1;
 
-struct Available_matches* availableMatches=NULL;
+struct available_matches *_matches = NULL;
 
 void clear_grid(char grid[3][3]) {
     memset(grid, 0, sizeof(grid[0][0]) * 9);
@@ -155,10 +155,10 @@ void handle_packet(int client, struct Packet *packet) {
         }
     }
 
-    if(packet->id == SERVER_BROADCASTMATCH){
+    if(packet->id == SERVER_BROADCASTMATCH) {
         if(serialized != NULL) {
             struct Server_BroadcastMatch *_packet=(struct Server_BroadcastMatch *)serialized;
-            add_node((struct generic_node **)&availableMatches, (void *)_packet);
+            add_node((struct generic_node **)&_matches, (void *)_packet);
         }else {
             if(DEBUG) {
                 printf("%s Ho ricevuto un pacchetto non serializzabile (id=%d)\n", MSG_DEBUG, packet->id);
@@ -166,12 +166,12 @@ void handle_packet(int client, struct Packet *packet) {
         }
     }
 
-    if(packet->id == SERVER_BROADCASTREMOVEMATCH){
+    if(packet->id == SERVER_BROADCASTREMOVEMATCH) {
         if(serialized != NULL) {
             struct Server_BroadcastRemoveMatch *_packet=(struct Server_BroadcastRemoveMatch *)serialized;
-            struct Server_BroadcastMatch* node_to_del = find_node(availableMatches, _packet->match);
-            if(node_to_del!=NULL){
-                remove_node((struct generic_node**)&availableMatches, (void *)node_to_del);
+            struct Server_BroadcastMatch *node_to_del = find_node(_matches, _packet->match);
+            if(node_to_del != NULL) {
+                remove_node((struct generic_node**)&_matches, (void *)node_to_del);
             }
         }else {
             if(DEBUG) {
@@ -181,29 +181,29 @@ void handle_packet(int client, struct Packet *packet) {
     }
 }
 
-struct Server_BroadcastMatch *find_node(struct Available_matches *head, int match){
+struct Server_BroadcastMatch *find_node(struct available_matches *head, int match) {
     if(head == NULL) {
         return NULL;
     }
-    struct Available_matches * curr = head;
+    struct available_matches *curr = head;
     while(curr != NULL) {
         if(curr->broad->match == match) {
             return curr->broad;
         }
-        curr=curr->next;
+        curr = curr->next;
     }
     return NULL;
 }
 
 void print_available_matches() {
-    struct Available_matches *curr = availableMatches;
+    struct available_matches *curr = _matches;
     if(curr == NULL) {
         printf("\n%s Nessuna partita disponibile.\n", MSG_INFO);
     }else {
         printf("\n%s Partite disponibili:\n", MSG_INFO);
     }
     while(curr != NULL) {
-        struct Server_BroadcastMatch* broadc = curr->broad;
+        struct Server_BroadcastMatch *broadc = curr->broad;
         printf("(*) Match \x1b[35m#%d\x1b[0m del giocatore \x1b[35m#%d\x1b[0m\n", broadc->match, broadc->player_id);
         curr = curr->next;
     }
