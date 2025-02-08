@@ -41,8 +41,7 @@ void print_grid() {
 void game_ui(int sockfd) {
     is_in_game_menu = 1;
     clear_screen();
-    printf("MENU DI GIOCO\n");
-    printf("Premi Ctrl+C per uscire\n\n");
+    printf("PARTITA DI TRIS\n\n");
     while(1) {
         if(game_running && game_state != -1) {
             if(game_state == STATE_WIN) {
@@ -64,8 +63,7 @@ void game_ui(int sockfd) {
                     game_state=STATE_CREATED;
                     clear_screen();
                     new_match_game_vars();
-                    printf("MENU DI GIOCO\n");
-                    printf("Premi Ctrl+C per uscire\n\n");
+                    printf("PARTITA DI TRIS\n\n");
                 }
             }else if(game_state == STATE_LOSE) {
                 print_grid();
