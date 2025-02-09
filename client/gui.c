@@ -15,6 +15,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <termios.h>
+#include <unistd.h>
 
 int is_in_game_menu = 0;
 int accepted = -1;
@@ -109,10 +111,12 @@ void game_ui(int sockfd) {
                 print_grid();
                 int mossaX;
                 int mossaY;
+                int c;
+              
                 printf("È il tuo turno\n");
 
                 do {
-                    while (getchar() != '\n');
+                    tcflush(STDIN_FILENO, TCIFLUSH);
                     printf("Sei %c \n", game_owned ? 'X' : 'O');
                     printf("Mossa (Riga,Colonna): ");
                 } while (scanf("%d,%d", &mossaY, &mossaX) != 2 ||
