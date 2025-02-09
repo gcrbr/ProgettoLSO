@@ -14,13 +14,13 @@ sh build.sh client
 <br>
 
 ### Server (Docker)
-1\. Accedi alla directory del server
+1\. Accedere alla directory del server:
 ```bash
 cd server
 ```
 <br>
 
-2\. Avvia il container con Docker
+2\. Avviare il container con Docker:
 ```bash
 docker compose up
 ```

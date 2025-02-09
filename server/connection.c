@@ -42,6 +42,7 @@ void *joiner_thread(void *args) {
 void send_empty_packet(struct client *client, int packet_id){
     struct Packet *new_packet = malloc(sizeof(struct Packet));
     new_packet->id = packet_id;
+    new_packet->content = NULL;
     send_packet(client->conn, new_packet);
     free(new_packet);
 }
