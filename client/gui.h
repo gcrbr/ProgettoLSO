@@ -1,5 +1,6 @@
 extern int is_in_game_menu;
 extern int accepted;
+extern int requested;
 extern int game_owned;
 extern int game_running;
 extern int curr_match_id;

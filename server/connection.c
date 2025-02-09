@@ -136,24 +136,31 @@ void handle_packet(struct client *client, struct Packet *packet) {
                 struct Match *found_match;
                 if((found_match = get_match_by_id(matches, _packet->match)) != NULL) {
                     if(found_match->participants[0]->id != player_id) {
-                        struct RequestNode *node = malloc(sizeof(struct RequestNode));
-                        node->requester = player;
-                        node->next = NULL;
-                        add_requester(found_match, node);
-                        if(DEBUG) {
-                            printf("%s Il Player id=%d ha inviato una richiesta al Match id=%d (creato da Player id=%d)\n", MSG_DEBUG, player_id, _packet->match, found_match->participants[0]->id);
-                        }
-                        send_empty_packet(client, SERVER_SUCCESS);
-                        while (found_match->requests_head!=NULL && found_match->requests_head != node && !found_match->participants[0]->busy) {};
-                        if(found_match->requests_head!=NULL && found_match->requests_head == node && !found_match->participants[0]->busy) {
-                            struct Server_MatchRequest *request_packet = malloc(sizeof(struct Server_MatchRequest));
-                            request_packet->other_player = player_id;
-                            request_packet->match = _packet->match;
-                            struct Packet *new_packet = malloc(sizeof(struct Packet));
-                            new_packet->id = SERVER_MATCHREQUEST;
-                            new_packet->content = request_packet;
-                            send_packet(found_match->participants[0]->id, new_packet); // Mando la richiesta al client dell'altro giocatore
-                            free(new_packet);
+                        if(!found_match->participants[0]->busy){
+                            struct RequestNode *node = malloc(sizeof(struct RequestNode));
+                            node->requester = player;
+                            node->next = NULL;
+                            add_requester(found_match, node);
+                            if(DEBUG) {
+                                printf("%s Il Player id=%d ha inviato una richiesta al Match id=%d (creato da Player id=%d)\n", MSG_DEBUG, player_id, _packet->match, found_match->participants[0]->id);
+                            }
+                            send_empty_packet(client, SERVER_SUCCESS);
+                            while (found_match->requests_head!=NULL && found_match->requests_head != node && !found_match->participants[0]->busy) {};
+                            if(found_match->requests_head!=NULL && found_match->requests_head == node && !found_match->participants[0]->busy) {
+                                struct Server_MatchRequest *request_packet = malloc(sizeof(struct Server_MatchRequest));
+                                request_packet->other_player = player_id;
+                                request_packet->match = _packet->match;
+                                struct Packet *new_packet = malloc(sizeof(struct Packet));
+                                new_packet->id = SERVER_MATCHREQUEST;
+                                new_packet->content = request_packet;
+                                send_packet(found_match->participants[0]->id, new_packet); // Mando la richiesta al client dell'altro giocatore
+                                free(new_packet);
+                            }
+                        }else{
+                            if(DEBUG) {
+                                printf("%s Il Player id=%d ha provato ad entrare in un Match in corso con id=%d\n", MSG_DEBUG, player_id, _packet->match);
+                            }
+                            send_empty_packet(client, SERVER_ERROR); 
                         }
                     }else {
                         if(DEBUG) {

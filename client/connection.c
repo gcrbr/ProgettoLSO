@@ -196,6 +196,14 @@ void handle_packet(int client, struct Packet *packet) {
             }
         } 
     }
+
+    if(packet->id == SERVER_ERROR){
+        if(requested){
+            requested=0;
+            accepted=0;
+            printf("%s Richiesta di accesso non valida\n", MSG_INFO);
+        }
+    }
 }
 
 struct Server_BroadcastMatch *find_node(struct available_matches *head, int match) {

@@ -18,6 +18,7 @@
 
 int is_in_game_menu = 0;
 int accepted = -1;
+int requested = 0;
 int game_owned = 0;
 int game_running = 0;
 int curr_match_id = -1;
@@ -166,6 +167,7 @@ void *ui_thread(void *_sockfd) {
                     printf("> Inserisci numero partita: ");
                 } while(scanf("%d", &id_partita) < 0);
                 join_match(sockfd, id_partita);
+                requested=1;
                 printf("%s Inviata richiesta di accesso, attendendo risposta...\n\n", MSG_INFO);
                 while(accepted == -1) {}
                 if(accepted) {
@@ -174,6 +176,7 @@ void *ui_thread(void *_sockfd) {
                 }
                 while (getchar() != '\n');
                 accepted = -1;
+                requested=0;
             }
 
             if(scelta == 4) {
